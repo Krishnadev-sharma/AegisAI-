@@ -17,8 +17,7 @@ def classify_risk(
     data: RiskClassificationRequest,
 ) -> RiskClassificationResponse:
     """
-    Classify the risk level of an AI system
-    based on EU AI Act criteria.
+    Classify the risk level of an AI system.
     """
 
     reasons = []
@@ -30,7 +29,6 @@ def classify_risk(
 
     high_risk_indicators = []
 
-    # HR and recruitment AI
     if (
         data.hr_recruitment_screening
         or data.hr_promotion_termination
@@ -54,7 +52,6 @@ def classify_risk(
             "Ensure accuracy and robustness",
         ])
 
-    # Credit and insurance AI
     if (
         data.credit_worthiness
         or data.insurance_risk_assessment
@@ -68,7 +65,6 @@ def classify_risk(
             "assessment is HIGH risk."
         )
 
-    # Safety component AI
     if data.is_safety_component:
         high_risk_indicators.append(
             "Safety component of a product"
@@ -79,7 +75,6 @@ def classify_risk(
             "requires HIGH risk compliance."
         )
 
-    # Fundamental rights impact
     if data.affects_fundamental_rights:
         high_risk_indicators.append(
             "Affects fundamental rights"
@@ -89,7 +84,6 @@ def classify_risk(
             "System impacts fundamental rights."
         )
 
-    # Law enforcement / justice
     if (
         data.law_enforcement
         or data.border_control
@@ -104,7 +98,6 @@ def classify_risk(
             "is HIGH risk."
         )
 
-    # Determine risk level
     if high_risk_indicators:
         risk_level = RiskLevel.HIGH
 
@@ -152,7 +145,6 @@ def classify_risk(
             "Voluntary codes of conduct encouraged."
         )
 
-    # Generate next steps
     if risk_level == RiskLevel.HIGH:
         next_steps = [
             "Complete risk assessment questionnaire",
@@ -225,7 +217,6 @@ def classify_and_save(
             detail="AI system not found",
         )
 
-    # Perform classification
     result = classify_risk(data)
 
     # TODO:
