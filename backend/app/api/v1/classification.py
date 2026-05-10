@@ -1,11 +1,13 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from app.core.scoring import compute_compliance_score
 
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
-from app.models.ai_system import AISystem, RiskLevel, RiskAssessment, ComplianceStatus
+from app.models.ai_system import AISystem, RiskLevel, ComplianceStatus
 from app.schemas.ai_system import RiskClassificationRequest, RiskClassificationResponse
 
 router = APIRouter()
@@ -149,27 +151,14 @@ def classify_and_save(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="AI system not found"
         )
-    
     # Perform classification
     result = classify_risk(data)
-    
-    # Update the AI system
-    system.risk_level = result.risk_level
-    system.compliance_status = ComplianceStatus.IN_PROGRESS
-    system.questionnaire_responses = data.model_dump()
-    
-    # Create risk assessment record
-    assessment = RiskAssessment(
-        ai_system_id=system.id,
-        assessment_type="initial",
-        risk_level=result.risk_level,
-        findings=[{"type": "classification", "reasons": result.reasons}],
-        recommendations=[{"requirements": result.requirements, "next_steps": result.next_steps}],
-        overall_score=70 if result.risk_level == RiskLevel.MINIMAL else 30
-    )
-    db.add(assessment)
-    
+ 
+    # TODO:
+    # AISystem scoring fields are pending integration.
+    # Compliance score logic prepared for future implementation.
+
     db.commit()
     db.refresh(system)
-    
+
     return result
