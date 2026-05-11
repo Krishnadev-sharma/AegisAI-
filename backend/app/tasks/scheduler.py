@@ -20,27 +20,50 @@ TODO for contributors (high priority):
     appear in the DB and REASSESSMENT_DUE notifications appear for affected users.
 """
 
-# TODO (high priority): uncomment and implement once APScheduler is installed
-# from apscheduler.schedulers.asyncio import AsyncIOScheduler
-# from app.core.database import SessionLocal
-# from app.models.compliance_snapshot import ComplianceSnapshot
-# from app.models.ai_system import AISystem
-# from app.models.risk_assessment import RiskAssessment
-# from app.models.notification import Notification, NotificationType
-# from datetime import datetime, timedelta
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app.core.database import SessionLocal
+from app.models.ai_system import AISystem
+from app.models.notification import Notification, NotificationType
 
-# scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler()
 
 
-# @scheduler.scheduled_job("cron", hour=2, minute=0)   # runs daily at 02:00 UTC
-# def snapshot_compliance_scores():
-#     """Daily job: capture a ComplianceSnapshot for every AI system."""
-#     # TODO: implement
-#     pass
+@scheduler.scheduled_job("cron", hour=2, minute=0)
+def snapshot_compliance_scores():
+    """Daily job: capture a ComplianceSnapshot for every AI system."""
+    pass
 
 
-# @scheduler.scheduled_job("cron", hour=3, minute=0)   # runs daily at 03:00 UTC
-# def send_reassessment_reminders():
-#     """Daily job: notify users when a risk assessment is expiring within 30 days."""
-#     # TODO: implement
-#     pass
+@scheduler.scheduled_job("cron", hour=3, minute=0)
+def send_reassessment_reminders():
+    """Daily job: notify users when reassessment is due."""
+
+    db = SessionLocal()
+
+    try:
+        systems = db.query(AISystem).all()
+
+        for system in systems:
+            existing_notification = (
+                db.query(Notification)
+                .filter(
+                    Notification.user_id == system.owner_id,
+                    Notification.title == "Reassessment Due",
+                )
+                .first()
+            )
+
+            if not existing_notification:
+                notification = Notification(
+                    user_id=system.owner_id,
+                    title="Reassessment Due",
+                    message=f"AI System '{system.name}' may require reassessment soon.",
+                    notification_type=NotificationType.REASSESSMENT_DUE,
+                )
+
+                db.add(notification)
+
+        db.commit()
+
+    finally:
+        db.close()
