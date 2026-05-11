@@ -3,8 +3,16 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.scoring import compute_compliance_score
+
 from app.models.user import User
-from app.models.ai_system import AISystem, RiskLevel
+from app.models.ai_system import (
+    AISystem,
+    RiskLevel,
+    RiskAssessment,
+    ComplianceStatus,
+)
+
 from app.schemas.ai_system import (
     RiskClassificationRequest,
     RiskClassificationResponse,
@@ -219,10 +227,38 @@ def classify_and_save(
 
     result = classify_risk(data)
 
-    # TODO:
-    # Compliance score rollup integration pending.
-    # RiskAssessment model dependency
-    # not yet available in repository.
+    system.risk_level = result.risk_level
+    system.compliance_status = ComplianceStatus.IN_PROGRESS
+    system.questionnaire_responses = data.model_dump()
+
+    assessment = RiskAssessment(
+        ai_system_id=system.id,
+        assessment_type="initial",
+        risk_level=result.risk_level,
+        findings=[
+            {
+                "type": "classification",
+                "reasons": result.reasons,
+            }
+        ],
+        recommendations=[
+            {
+                "requirements": result.requirements,
+                "next_steps": result.next_steps,
+            }
+        ],
+        overall_score=(
+            70
+            if result.risk_level == RiskLevel.MINIMAL
+            else 30
+        ),
+    )
+
+    db.add(assessment)
+
+    system.compliance_score = (
+        compute_compliance_score(assessment)
+    )
 
     db.commit()
     db.refresh(system)
