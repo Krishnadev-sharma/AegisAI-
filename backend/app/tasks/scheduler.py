@@ -2,98 +2,45 @@
 Background scheduler — periodic compliance snapshots and reassessment reminders.
 Copyright (C) 2024 Sarthak Doshi (github.com/SdSarthak)
 SPDX-License-Identifier: AGPL-3.0-only
+
+TODO for contributors (high priority):
+  - Install APScheduler: add `apscheduler>=3.10` to backend/requirements.txt.
+  - Implement `snapshot_compliance_scores()`:
+      * Open a DB session.
+      * Query all active AISystem rows.
+      * For each system, insert a ComplianceSnapshot row with the current
+        compliance_score, compliance_status, and risk_level.
+  - Implement `send_reassessment_reminders()`:
+      * Query RiskAssessment rows where valid_until is within 30 days
+        from today and the system owner has not been notified recently.
+      * Create a Notification row of type REASSESSMENT_DUE for the owner.
+  - Wire both jobs into the APScheduler instance below and start the
+    scheduler when the FastAPI app starts (use app lifespan or startup event).
+  - Acceptance criteria: after the scheduler runs, ComplianceSnapshot rows
+    appear in the DB and REASSESSMENT_DUE notifications appear for affected users.
 """
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-<<<<<<< HEAD
-from datetime import datetime, timedelta
-
-from app.core.database import SessionLocal
-from app.models.compliance_snapshot import ComplianceSnapshot
-from app.models.ai_system import AISystem
-from app.models.notification import Notification, NotificationType
-
-=======
 from app.core.database import SessionLocal
 from app.models.ai_system import AISystem
 from app.models.notification import Notification, NotificationType
 
->>>>>>> 4d98067 (Implement reassessment reminder notifications)
 scheduler = AsyncIOScheduler()
 
 
 @scheduler.scheduled_job("cron", hour=2, minute=0)
 def snapshot_compliance_scores():
-<<<<<<< HEAD
-    """
-    Daily job: capture a ComplianceSnapshot for every AI system.
-    """
-
-    db = SessionLocal()
-
-    try:
-        systems = db.query(AISystem).all()
-
-        for system in systems:
-            snapshot = ComplianceSnapshot(
-                ai_system_id=system.id,
-                compliance_score=system.compliance_score,
-                compliance_status=system.compliance_status,
-                risk_level=system.risk_level,
-            )
-
-            db.add(snapshot)
-
-        db.commit()
-
-    finally:
-        db.close()
-=======
     """Daily job: capture a ComplianceSnapshot for every AI system."""
     pass
->>>>>>> 4d98067 (Implement reassessment reminder notifications)
 
 
 @scheduler.scheduled_job("cron", hour=3, minute=0)
 def send_reassessment_reminders():
-<<<<<<< HEAD
-    """
-    Daily job: notify users when reassessment reminders
-    are due.
-
-    NOTE:
-    RiskAssessment model dependency is currently unavailable
-    in the repository. Full reminder integration will be
-    completed once dependent issues/models are merged.
-    """
-=======
     """Daily job: notify users when reassessment is due."""
->>>>>>> 4d98067 (Implement reassessment reminder notifications)
 
     db = SessionLocal()
 
     try:
-<<<<<<< HEAD
-        current_time = datetime.utcnow()
-
-        # Prevent duplicate notifications within last 7 days
-        existing_notification = (
-            db.query(Notification)
-            .filter(
-                Notification.notification_type
-                == NotificationType.REASSESSMENT_DUE
-            )
-            .filter(
-                Notification.created_at
-                >= current_time - timedelta(days=7)
-            )
-            .first()
-        )
-
-        if not existing_notification:
-            # Placeholder for future RiskAssessment integration
-            pass
-=======
         systems = db.query(AISystem).all()
 
         for system in systems:
@@ -115,7 +62,6 @@ def send_reassessment_reminders():
                 )
 
                 db.add(notification)
->>>>>>> 4d98067 (Implement reassessment reminder notifications)
 
         db.commit()
 
