@@ -44,76 +44,24 @@ def send_reassessment_reminders():
         systems = db.query(AISystem).all()
 
         for system in systems:
-            snapshot = ComplianceSnapshot(
-                ai_system_id=system.id,
-                compliance_score=system.compliance_score,
-                compliance_status=system.compliance_status,
-                risk_level=system.risk_level,
-            )
-
-            db.add(snapshot)
-
-        db.commit()
-
-    finally:
-        db.close()
-
-
-@scheduler.scheduled_job("cron", hour=3, minute=0)
-def send_reassessment_reminders():
-    """
-    Daily job: notify users when a risk assessment
-    is expiring within 30 days.
-    """
-
-    db = SessionLocal()
-
-    try:
-        current_time = datetime.utcnow()
-        cutoff_date = current_time + timedelta(days=30)
-
-        due_assessments = (
-            db.query(RiskAssessment)
-            .filter(RiskAssessment.valid_until <= cutoff_date)
-            .filter(RiskAssessment.valid_until >= current_time)
-            .all()
-        )
-
-        for assessment in due_assessments:
-
-            system = assessment.ai_system
-
-            # Prevent duplicate notifications within last 7 days
             existing_notification = (
                 db.query(Notification)
-                .filter(Notification.resource_id == system.id)
                 .filter(
-                    Notification.notification_type
-                    == NotificationType.REASSESSMENT_DUE
-                )
-                .filter(
-                    Notification.created_at
-                    >= current_time - timedelta(days=7)
+                    Notification.user_id == system.owner_id,
+                    Notification.title == "Reassessment Due",
                 )
                 .first()
             )
 
-            if existing_notification:
-                continue
+            if not existing_notification:
+                notification = Notification(
+                    user_id=system.owner_id,
+                    title="Reassessment Due",
+                    message=f"AI System '{system.name}' may require reassessment soon.",
+                    notification_type=NotificationType.REASSESSMENT_DUE,
+                )
 
-            notification = Notification(
-                user_id=system.owner_id,
-                notification_type=NotificationType.REASSESSMENT_DUE,
-                title="Risk assessment due soon",
-                message=(
-                    f"{system.name} requires re-assessment "
-                    f"by {assessment.valid_until.date()}"
-                ),
-                resource_type="ai_system",
-                resource_id=system.id,
-            )
-
-            db.add(notification)
+                db.add(notification)
 
         db.commit()
 
